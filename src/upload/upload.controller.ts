@@ -1,7 +1,7 @@
-import { Body, Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, HttpStatus, ParseFilePipeBuilder, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UploadService } from './upload.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 import { GetUser } from 'src/decorators';
 
@@ -13,7 +13,7 @@ export class UploadController {
 
     @Post('single')
     @UseInterceptors(FileInterceptor('file'))
-    uploadSingleFile(@GetUser('id') userId: number, @UploadedFile(
+    uploadSingleFile(@GetUser('id') user: Object, @UploadedFile(
         new ParseFilePipeBuilder()
         .addFileTypeValidator({
             fileType: 'pdf',
@@ -23,10 +23,21 @@ export class UploadController {
         })
     ) 
     file: Express.Multer.File) {
-        return this.uploadService.uploadSingleFile(userId, file);
+        return this.uploadService.uploadSingleFile(user, file);
     }
 
     @Post('multiple')
-    uploadMultipleFiles() {}
+    @UseInterceptors(FilesInterceptor('files'))
+    uploadMultipleFiles(@GetUser('id') user: Object, @UploadedFiles(
+        new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+            fileType: 'pdf',
+        })
+        .build({
+            errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        })
+    ) files: Array<Express.Multer.File>) {
+        return this.uploadService.uploadMultipleFile(user, files);
+    }
 
 }

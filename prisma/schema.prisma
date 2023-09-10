@@ -29,7 +29,6 @@ model User {
 model Upload {
   id Int @id @default(autoincrement())
   uploadedAt DateTime @default(now())
-  filename String
   filesize Int
   key String
 
@@ -42,7 +41,6 @@ model Upload {
 model Summary {
   id Int @id @default(autoincrement())
   createdAt DateTime @default(now())
-  filename String
   fileSize Int
   key String
 
@@ -55,7 +53,6 @@ model Summary {
 model SummarizedAudio {
   id Int @id @default(autoincrement())
   createdAt DateTime @default(now())
-  filename String
   filesize Int
   audioLength String
   key String
