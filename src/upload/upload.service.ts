@@ -12,6 +12,14 @@ export class UploadService {
     constructor(private prismaService: PrismaService) { }
 
     async uploadSingleFile(user: Object, file: Express.Multer.File) {
+        const upload = await this.prismaService.upload.findFirst({
+            where: {
+                key: file.originalname,
+            }
+        });
+
+        if (upload) { throw new ForbiddenException("File already exists") }
+
         const s3Upload = await this.s3Client.send(
             new PutObjectCommand({
                 Bucket: 'readifybucket',
@@ -21,11 +29,28 @@ export class UploadService {
         );
 
         if (!s3Upload) { throw new ForbiddenException("Could not upload file") }
-        
+
         return this.uploadMetadata(user['id'], file.size, file.originalname);
     }
 
     async uploadMultipleFile(user: Object, files: Array<Express.Multer.File>) {
+        const newFiles: Express.Multer.File[] = [];
+
+        for (const file of files) {
+            const existingFile = await this.prismaService.upload.findFirst({
+                where: {
+                    key: file.originalname,
+                },
+            });
+
+            if (!existingFile) {
+                newFiles.push(file);
+            }
+        }
+
+        files = newFiles;
+
+
         files.forEach(async file => {
             const s3Upload = await this.s3Client.send(
                 new PutObjectCommand({
@@ -34,11 +59,17 @@ export class UploadService {
                     Body: file.buffer
                 })
             );
-    
+
             if (!s3Upload) { throw new ForbiddenException("Could not upload file") }
-            
-            return this.uploadMetadata(user['id'], file.size, file.originalname); 
         });
+
+        const uploadPromises: Promise<number>[] = files.map(async (file) => {
+            return this.uploadMetadata(user['id'], file.size, file.originalname);
+        });
+
+        const uploadIds = await Promise.all(uploadPromises);
+
+        return { ids: uploadIds }
     }
 
     async uploadMetadata(userId: number, filesize: number, key: string): Promise<number> {
@@ -50,7 +81,7 @@ export class UploadService {
                     key,
                 }
             });
-            
+
             return upload.id;
         } catch (error) {
             if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
