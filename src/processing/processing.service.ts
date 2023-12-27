@@ -1,31 +1,36 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import * as pdf from 'pdf-parse';
 import * as summarize from 'text-summarization';
+import * as gTTS from 'gtts';
 
 @Injectable()
 export class ProcessingService {
-    async processFile(file: Express.Multer.File): Promise<Array<string>> {
+    async summarizeFileContent(file: Express.Multer.File): Promise<string> {
         const buffer = await pdf(file.buffer);
         const text: string = buffer.text;
 
-        const summary = await summarize({ text });
+        const result = await summarize({ text });
+        const summary = result.extractive;
+        const textSummary = summary.join('\n');
 
-        return summary.extractive;
+        return textSummary;
     }
 
-    async processFiles(files: Array<Express.Multer.File>):Promise<Array<Array<string>>> {
-        let summaries: Array<Array<string>> = [];
+    convertSummmaryToAudio(summary: string, filename: string): {filename: string, filepath: string} {
+        filename = filename.split('.').slice(0, -1).join('.');
+        filename = `${filename}.mp3`;
 
-        for (const file of files) {
-            const buffer = await pdf(file.buffer);
-            const text: string = buffer.text;
+        const gtts = new gTTS(summary, 'en');
 
-            const summary = await summarize({ text });
+        const filepath = `./temp/${filename}`;
 
-            summaries.push(summary.extractive);
+        gtts.save(filepath, (err, result) => {
+            if (err) { throw new Error(err) }
+        });
+
+        return {
+            filename,
+            filepath,
         }
-
-        return summaries;
     }
 }
