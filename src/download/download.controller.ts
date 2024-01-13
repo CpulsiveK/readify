@@ -9,7 +9,7 @@ export class DownloadController {
     constructor(private downloadService: DownloadService) { }
 
     @Get(':key')
-    download(@Param('key') key: string, @Res({ passthrough: true }) res: Response): Promise<StreamableFile> {
+    download(@Param('key') key: string, @Res({ passthrough: true }) res: Response): Promise<{url: String}> {
         return this.downloadService.download(key, res);
     }
 }
